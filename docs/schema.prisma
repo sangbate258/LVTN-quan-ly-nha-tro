@@ -1,0 +1,957 @@
+// Sinh tự động từ đặc tả mục 3.1 (file 08). Chưa phải mã nguồn chính thức; dùng làm điểm bắt đầu.
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id Int @id @default(autoincrement())
+  phone String @unique @db.VarChar(15)
+  passwordHash String @db.VarChar(255) @map("password_hash")
+  fullName String? @db.VarChar(100) @map("full_name")
+  isLandlord Boolean @default(false) @map("is_landlord")
+  isTenant Boolean @default(false) @map("is_tenant")
+  phoneVerifiedAt DateTime? @map("phone_verified_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  recoveryContactsByUserId RecoveryContact[] @relation("recovery_contacts_user_id")
+  otpCodesByUserId OtpCode[] @relation("otp_codes_user_id")
+  sessionsByUserId Session[] @relation("sessions_user_id")
+  boardingHousesByOwnerId BoardingHouse? @relation("boarding_houses_owner_id")
+  servicePricesByCreatedBy ServicePrice[] @relation("service_prices_created_by")
+  reservationsByCreatedBy Reservation[] @relation("reservations_created_by")
+  contractsByCreatedBy Contract[] @relation("contracts_created_by")
+  contractMembersByUserId ContractMember[] @relation("contract_members_user_id")
+  contractServicesByCreatedBy ContractService[] @relation("contract_services_created_by")
+  contractChangesByProposedBy ContractChange[] @relation("contract_changes_proposed_by")
+  contractChangesByConfirmedBy ContractChange[] @relation("contract_changes_confirmed_by")
+  handoversByConfirmedBy Handover[] @relation("handovers_confirmed_by")
+  handoversByCompletedBy Handover[] @relation("handovers_completed_by")
+  handoversByCreatedBy Handover[] @relation("handovers_created_by")
+  metersByCreatedBy Meter[] @relation("meters_created_by")
+  meterReadingsByLockedBy MeterReading[] @relation("meter_readings_locked_by")
+  readingFeedbacksByTenantId ReadingFeedback[] @relation("reading_feedbacks_tenant_id")
+  readingFeedbacksByHandledBy ReadingFeedback[] @relation("reading_feedbacks_handled_by")
+  invoiceAdjustmentsByCreatedBy InvoiceAdjustment[] @relation("invoice_adjustments_created_by")
+  paymentRequestsByRequestedBy PaymentRequest[] @relation("payment_requests_requested_by")
+  paymentRequestsByReviewedBy PaymentRequest[] @relation("payment_requests_reviewed_by")
+  bankTransactionsByHandledBy BankTransaction[] @relation("bank_transactions_handled_by")
+  paymentsByConfirmedBy Payment[] @relation("payments_confirmed_by")
+  incidentsByReportedBy Incident[] @relation("incidents_reported_by")
+  incidentUpdatesByAuthorId IncidentUpdate[] @relation("incident_updates_author_id")
+  extraChargesByCreatedBy ExtraCharge[] @relation("extra_charges_created_by")
+  financeEntriesByCreatedBy FinanceEntry[] @relation("finance_entries_created_by")
+  settlementsByCompletedBy Settlement[] @relation("settlements_completed_by")
+  announcementsByCreatedBy Announcement[] @relation("announcements_created_by")
+  notificationsByUserId Notification[] @relation("notifications_user_id")
+  attachmentsByUploadedBy Attachment[] @relation("attachments_uploaded_by")
+  auditLogsByActorId AuditLog[] @relation("audit_logs_actor_id")
+  @@map("users")
+}
+
+model RecoveryContact {
+  id Int @id @default(autoincrement())
+  userId Int @map("user_id")
+  user User @relation("recovery_contacts_user_id", fields: [userId], references: [id])
+  type RecoveryContactType
+  value String @db.VarChar(255)
+  verifiedAt DateTime? @map("verified_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([userId, value])
+  @@map("recovery_contacts")
+}
+
+model OtpCode {
+  id Int @id @default(autoincrement())
+  userId Int? @map("user_id")
+  user User? @relation("otp_codes_user_id", fields: [userId], references: [id])
+  target String @db.VarChar(255)
+  purpose OtpCodePurpose
+  codeHash String @db.VarChar(255) @map("code_hash")
+  expiresAt DateTime @map("expires_at")
+  attemptCount Int @default(0) @map("attempt_count")
+  usedAt DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("otp_codes")
+}
+
+model Session {
+  id Int @id @default(autoincrement())
+  userId Int @map("user_id")
+  user User @relation("sessions_user_id", fields: [userId], references: [id])
+  refreshTokenHash String @unique @db.VarChar(255) @map("refresh_token_hash")
+  activeRole SessionActiveRole @map("active_role")
+  pushToken String? @db.VarChar(255) @map("push_token")
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("sessions")
+}
+
+model BoardingHouse {
+  id Int @id @default(autoincrement())
+  ownerId Int @unique @map("owner_id")
+  owner User @relation("boarding_houses_owner_id", fields: [ownerId], references: [id])
+  name String @db.VarChar(150)
+  address String @db.VarChar(255)
+  billingDay Int @db.TinyInt @map("billing_day")
+  paymentDueDays Int @db.TinyInt @default(5) @map("payment_due_days")
+  bankBin String? @db.VarChar(10) @map("bank_bin")
+  bankAccountNo String? @db.VarChar(30) @map("bank_account_no")
+  bankAccountName String? @db.VarChar(100) @map("bank_account_name")
+  webhookToken String? @unique @db.VarChar(64) @map("webhook_token")
+  webhookKeyHash String? @db.VarChar(255) @map("webhook_key_hash")
+  webhookConnectedAt DateTime? @map("webhook_connected_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  roomGroupsByHouseId RoomGroup[] @relation("room_groups_house_id")
+  roomsByHouseId Room[] @relation("rooms_house_id")
+  servicesByHouseId Service[] @relation("services_house_id")
+  reservationsByHouseId Reservation[] @relation("reservations_house_id")
+  contractsByHouseId Contract[] @relation("contracts_house_id")
+  invoicesByHouseId Invoice[] @relation("invoices_house_id")
+  bankTransactionsByHouseId BankTransaction[] @relation("bank_transactions_house_id")
+  paymentsByHouseId Payment[] @relation("payments_house_id")
+  incidentsByHouseId Incident[] @relation("incidents_house_id")
+  financeEntriesByHouseId FinanceEntry[] @relation("finance_entries_house_id")
+  announcementsByHouseId Announcement[] @relation("announcements_house_id")
+  notificationsByHouseId Notification[] @relation("notifications_house_id")
+  attachmentsByHouseId Attachment[] @relation("attachments_house_id")
+  auditLogsByHouseId AuditLog[] @relation("audit_logs_house_id")
+  @@map("boarding_houses")
+}
+
+model RoomGroup {
+  id Int @id @default(autoincrement())
+  houseId Int @map("house_id")
+  house BoardingHouse @relation("room_groups_house_id", fields: [houseId], references: [id])
+  name String @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  roomsByGroupId Room[] @relation("rooms_group_id")
+  @@unique([houseId, name])
+  @@map("room_groups")
+}
+
+model Room {
+  id Int @id @default(autoincrement())
+  houseId Int @map("house_id")
+  house BoardingHouse @relation("rooms_house_id", fields: [houseId], references: [id])
+  groupId Int? @map("group_id")
+  group RoomGroup? @relation("rooms_group_id", fields: [groupId], references: [id])
+  name String @db.VarChar(50)
+  monthlyRent Int @map("monthly_rent")
+  status RoomStatus
+  note String? @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  reservationsByRoomId Reservation[] @relation("reservations_room_id")
+  contractsByRoomId Contract[] @relation("contracts_room_id")
+  metersByRoomId Meter[] @relation("meters_room_id")
+  incidentsByRoomId Incident[] @relation("incidents_room_id")
+  @@unique([houseId, name])
+  @@map("rooms")
+}
+
+model Service {
+  id Int @id @default(autoincrement())
+  houseId Int @map("house_id")
+  house BoardingHouse @relation("services_house_id", fields: [houseId], references: [id])
+  name String @db.VarChar(100)
+  feeType ServiceFeeType @map("fee_type")
+  calcMethod ServiceCalcMethod @map("calc_method")
+  unit String @db.VarChar(30)
+  createdAt DateTime @default(now()) @map("created_at")
+  servicePricesByServiceId ServicePrice[] @relation("service_prices_service_id")
+  contractServicesByServiceId ContractService[] @relation("contract_services_service_id")
+  invoiceLinesByServiceId InvoiceLine[] @relation("invoice_lines_service_id")
+  @@unique([houseId, name])
+  @@map("services")
+}
+
+model ServicePrice {
+  id Int @id @default(autoincrement())
+  serviceId Int @map("service_id")
+  service Service @relation("service_prices_service_id", fields: [serviceId], references: [id])
+  unitPrice Int @map("unit_price")
+  effectiveFrom DateTime @db.Date @map("effective_from")
+  createdBy Int @map("created_by")
+  createdByUser User @relation("service_prices_created_by", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("service_prices")
+}
+
+model Reservation {
+  id Int @id @default(autoincrement())
+  houseId Int @map("house_id")
+  house BoardingHouse @relation("reservations_house_id", fields: [houseId], references: [id])
+  roomId Int @map("room_id")
+  room Room @relation("reservations_room_id", fields: [roomId], references: [id])
+  holderName String @db.VarChar(100) @map("holder_name")
+  holderPhone String @db.VarChar(15) @map("holder_phone")
+  agreedRent Int @map("agreed_rent")
+  expectedMoveIn DateTime @db.Date @map("expected_move_in")
+  holdUntil DateTime @db.Date @map("hold_until")
+  depositAmount Int @map("deposit_amount")
+  depositTerms String? @db.Text @map("deposit_terms")
+  depositReceived Int? @map("deposit_received")
+  depositMethod ReservationDepositMethod? @map("deposit_method")
+  depositConfirmedAt DateTime? @map("deposit_confirmed_at")
+  status ReservationStatus
+  refundAmount Int? @map("refund_amount")
+  cancelReason String? @db.VarChar(255) @map("cancel_reason")
+  createdBy Int @map("created_by")
+  createdByUser User @relation("reservations_created_by", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  contractsByReservationId Contract? @relation("contracts_reservation_id")
+  @@map("reservations")
+}
+
+model Contract {
+  id Int @id @default(autoincrement())
+  houseId Int @map("house_id")
+  house BoardingHouse @relation("contracts_house_id", fields: [houseId], references: [id])
+  roomId Int @map("room_id")
+  room Room @relation("contracts_room_id", fields: [roomId], references: [id])
+  reservationId Int? @unique @map("reservation_id")
+  reservation Reservation? @relation("contracts_reservation_id", fields: [reservationId], references: [id])
+  source ContractSource
+  startDate DateTime @db.Date @map("start_date")
+  endDate DateTime @db.Date @map("end_date")
+  monthlyRent Int @map("monthly_rent")
+  paymentMode ContractPaymentMode @map("payment_mode")
+  depositAgreed Int @map("deposit_agreed")
+  depositHeld Int @map("deposit_held")
+  reservationOffset Int @default(0) @map("reservation_offset")
+  offsetRefundDue Int @default(0) @map("offset_refund_due")
+  offsetRefundedAt DateTime? @map("offset_refunded_at")
+  offsetInvoiceId Int? @unique @map("offset_invoice_id")
+  offsetInvoice Invoice? @relation("contracts_offset_invoice_id", fields: [offsetInvoiceId], references: [id])
+  openingDebt Int @default(0) @map("opening_debt")
+  termsNote String? @db.Text @map("terms_note")
+  status ContractStatus
+  moveOutDate DateTime? @db.Date @map("move_out_date")
+  terminationDate DateTime? @db.Date @map("termination_date")
+  createdBy Int @map("created_by")
+  createdByUser User @relation("contracts_created_by", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  contractMembersByContractId ContractMember[] @relation("contract_members_contract_id")
+  contractServicesByContractId ContractService[] @relation("contract_services_contract_id")
+  contractChangesByContractId ContractChange[] @relation("contract_changes_contract_id")
+  handoversByContractId Handover[] @relation("handovers_contract_id")
+  invoicesByContractId Invoice[] @relation("invoices_contract_id")
+  incidentsByContractId Incident[] @relation("incidents_contract_id")
+  extraChargesByContractId ExtraCharge[] @relation("extra_charges_contract_id")
+  settlementsByContractId Settlement? @relation("settlements_contract_id")
+  @@map("contracts")
+}
+
+model ContractMember {
+  id Int @id @default(autoincrement())
+  contractId Int @map("contract_id")
+  contract Contract @relation("contract_members_contract_id", fields: [contractId], references: [id])
+  userId Int? @map("user_id")
+  user User? @relation("contract_members_user_id", fields: [userId], references: [id])
+  fullName String @db.VarChar(100) @map("full_name")
+  phone String? @db.VarChar(15)
+  isHolder Boolean @default(false) @map("is_holder")
+  isRepresentative Boolean @default(false) @map("is_representative")
+  isPayer Boolean @default(false) @map("is_payer")
+  sortOrder Int @map("sort_order")
+  creditBalance Int @default(0) @map("credit_balance")
+  joinedAt DateTime @db.Date @map("joined_at")
+  leftAt DateTime? @db.Date @map("left_at")
+  invoiceObligationsByMemberId InvoiceObligation[] @relation("invoice_obligations_member_id")
+  paymentsByPayerMemberId Payment[] @relation("payments_payer_member_id")
+  @@map("contract_members")
+}
+
+model ContractService {
+  id Int @id @default(autoincrement())
+  contractId Int @map("contract_id")
+  contract Contract @relation("contract_services_contract_id", fields: [contractId], references: [id])
+  serviceId Int @map("service_id")
+  service Service @relation("contract_services_service_id", fields: [serviceId], references: [id])
+  isApplied Boolean @map("is_applied")
+  quantity Int
+  effectiveFrom DateTime @db.Date @map("effective_from")
+  createdBy Int @map("created_by")
+  createdByUser User @relation("contract_services_created_by", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("contract_services")
+}
+
+model ContractChange {
+  id Int @id @default(autoincrement())
+  contractId Int @map("contract_id")
+  contract Contract @relation("contract_changes_contract_id", fields: [contractId], references: [id])
+  kind ContractChangeKind
+  proposedBy Int @map("proposed_by")
+  proposedByUser User @relation("contract_changes_proposed_by", fields: [proposedBy], references: [id])
+  content String @db.Text
+  changes Json?
+  effectiveDate DateTime? @db.Date @map("effective_date")
+  status ContractChangeStatus
+  confirmedBy Int? @map("confirmed_by")
+  confirmedByUser User? @relation("contract_changes_confirmed_by", fields: [confirmedBy], references: [id])
+  confirmedAt DateTime? @map("confirmed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("contract_changes")
+}
+
+model Handover {
+  id Int @id @default(autoincrement())
+  contractId Int @map("contract_id")
+  contract Contract @relation("handovers_contract_id", fields: [contractId], references: [id])
+  type HandoverType
+  conditionNote String @db.Text @map("condition_note")
+  assets Json
+  keyCount Int @map("key_count")
+  electricReading Int? @map("electric_reading")
+  waterReading Int? @map("water_reading")
+  damageNote String? @db.Text @map("damage_note")
+  status HandoverStatus
+  tenantFeedback String? @db.Text @map("tenant_feedback")
+  confirmedBy Int? @map("confirmed_by")
+  confirmedByUser User? @relation("handovers_confirmed_by", fields: [confirmedBy], references: [id])
+  confirmedAt DateTime? @map("confirmed_at")
+  completionNote String? @db.Text @map("completion_note")
+  completedBy Int? @map("completed_by")
+  completedByUser User? @relation("handovers_completed_by", fields: [completedBy], references: [id])
+  completedAt DateTime? @map("completed_at")
+  createdBy Int @map("created_by")
+  createdByUser User @relation("handovers_created_by", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@unique([contractId, type])
+  @@map("handovers")
+}
+
+model Meter {
+  id Int @id @default(autoincrement())
+  roomId Int @map("room_id")
+  room Room @relation("meters_room_id", fields: [roomId], references: [id])
+  type MeterType
+  startReading Int @map("start_reading")
+  installedOn DateTime @db.Date @map("installed_on")
+  finalReading Int? @map("final_reading")
+  removedOn DateTime? @db.Date @map("removed_on")
+  createdBy Int @map("created_by")
+  createdByUser User @relation("meters_created_by", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  meterReadingsByMeterId MeterReading[] @relation("meter_readings_meter_id")
+  @@map("meters")
+}
+
+model MeterReading {
+  id Int @id @default(autoincrement())
+  meterId Int @map("meter_id")
+  meter Meter @relation("meter_readings_meter_id", fields: [meterId], references: [id])
+  period String @db.Char(7)
+  reading Int
+  isAbnormal Boolean @default(false) @map("is_abnormal")
+  lockedBy Int @map("locked_by")
+  lockedByUser User @relation("meter_readings_locked_by", fields: [lockedBy], references: [id])
+  lockedAt DateTime @map("locked_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  readingFeedbacksByReadingId ReadingFeedback[] @relation("reading_feedbacks_reading_id")
+  @@unique([meterId, period])
+  @@map("meter_readings")
+}
+
+model ReadingFeedback {
+  id Int @id @default(autoincrement())
+  readingId Int @map("reading_id")
+  reading MeterReading @relation("reading_feedbacks_reading_id", fields: [readingId], references: [id])
+  tenantId Int @map("tenant_id")
+  tenant User @relation("reading_feedbacks_tenant_id", fields: [tenantId], references: [id])
+  content String @db.Text
+  status ReadingFeedbackStatus
+  reply String? @db.Text
+  handledBy Int? @map("handled_by")
+  handledByUser User? @relation("reading_feedbacks_handled_by", fields: [handledBy], references: [id])
+  handledAt DateTime? @map("handled_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("reading_feedbacks")
+}
+
+model Invoice {
+  id Int @id @default(autoincrement())
+  houseId Int @map("house_id")
+  house BoardingHouse @relation("invoices_house_id", fields: [houseId], references: [id])
+  contractId Int @map("contract_id")
+  contract Contract @relation("invoices_contract_id", fields: [contractId], references: [id])
+  period String @db.Char(7)
+  periodStart DateTime @db.Date @map("period_start")
+  periodEnd DateTime @db.Date @map("period_end")
+  status InvoiceStatus
+  missingReading Boolean @default(false) @map("missing_reading")
+  totalAmount Int @map("total_amount")
+  issuedAt DateTime? @map("issued_at")
+  dueDate DateTime? @db.Date @map("due_date")
+  isAdjusted Boolean @default(false) @map("is_adjusted")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  contractsByOffsetInvoiceId Contract? @relation("contracts_offset_invoice_id")
+  invoiceLinesByInvoiceId InvoiceLine[] @relation("invoice_lines_invoice_id")
+  invoiceObligationsByInvoiceId InvoiceObligation[] @relation("invoice_obligations_invoice_id")
+  invoiceAdjustmentsByInvoiceId InvoiceAdjustment[] @relation("invoice_adjustments_invoice_id")
+  paymentRequestsByInvoiceId PaymentRequest[] @relation("payment_requests_invoice_id")
+  paymentsByInvoiceId Payment[] @relation("payments_invoice_id")
+  extraChargesByInvoiceId ExtraCharge[] @relation("extra_charges_invoice_id")
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id Int @id @default(autoincrement())
+  invoiceId Int @map("invoice_id")
+  invoice Invoice @relation("invoice_lines_invoice_id", fields: [invoiceId], references: [id])
+  lineType InvoiceLineLineType @map("line_type")
+  serviceId Int? @map("service_id")
+  service Service? @relation("invoice_lines_service_id", fields: [serviceId], references: [id])
+  description String @db.VarChar(255)
+  quantity Int
+  unitPrice Int @map("unit_price")
+  oldReading Int? @map("old_reading")
+  newReading Int? @map("new_reading")
+  defaultAmount Int @map("default_amount")
+  amount Int
+  adjustReason String? @db.VarChar(255) @map("adjust_reason")
+  adjustmentId Int? @map("adjustment_id")
+  adjustment InvoiceAdjustment? @relation("invoice_lines_adjustment_id", fields: [adjustmentId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("invoice_lines")
+}
+
+model InvoiceObligation {
+  id Int @id @default(autoincrement())
+  invoiceId Int @map("invoice_id")
+  invoice Invoice @relation("invoice_obligations_invoice_id", fields: [invoiceId], references: [id])
+  memberId Int @map("member_id")
+  member ContractMember @relation("invoice_obligations_member_id", fields: [memberId], references: [id])
+  paymentCode String @unique @db.VarChar(20) @map("payment_code")
+  shareAmount Int @map("share_amount")
+  creditApplied Int @default(0) @map("credit_applied")
+  amountDue Int @map("amount_due")
+  amountPaid Int @default(0) @map("amount_paid")
+  sortOrder Int @map("sort_order")
+  status InvoiceObligationStatus
+  updatedAt DateTime @updatedAt @map("updated_at")
+  paymentRequestsByObligationId PaymentRequest[] @relation("payment_requests_obligation_id")
+  paymentAllocationsByObligationId PaymentAllocation[] @relation("payment_allocations_obligation_id")
+  @@map("invoice_obligations")
+}
+
+model InvoiceAdjustment {
+  id Int @id @default(autoincrement())
+  invoiceId Int @map("invoice_id")
+  invoice Invoice @relation("invoice_adjustments_invoice_id", fields: [invoiceId], references: [id])
+  direction InvoiceAdjustmentDirection
+  amount Int
+  reason String @db.VarChar(255)
+  handling InvoiceAdjustmentHandling
+  status InvoiceAdjustmentStatus
+  handledAt DateTime? @map("handled_at")
+  createdBy Int @map("created_by")
+  createdByUser User @relation("invoice_adjustments_created_by", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  invoiceLinesByAdjustmentId InvoiceLine[] @relation("invoice_lines_adjustment_id")
+  settlementItemsByAdjustmentId SettlementItem[] @relation("settlement_items_adjustment_id")
+  @@map("invoice_adjustments")
+}
+
+model PaymentRequest {
+  id Int @id @default(autoincrement())
+  invoiceId Int @map("invoice_id")
+  invoice Invoice @relation("payment_requests_invoice_id", fields: [invoiceId], references: [id])
+  obligationId Int? @map("obligation_id")
+  obligation InvoiceObligation? @relation("payment_requests_obligation_id", fields: [obligationId], references: [id])
+  requestedBy Int @map("requested_by")
+  requestedByUser User @relation("payment_requests_requested_by", fields: [requestedBy], references: [id])
+  amount Int
+  referenceCode String @unique @db.VarChar(20) @map("reference_code")
+  status PaymentRequestStatus
+  expiresAt DateTime @map("expires_at")
+  reportStatus PaymentRequestReportStatus @default(NONE) @map("report_status")
+  reportedAt DateTime? @map("reported_at")
+  rejectReason String? @db.VarChar(255) @map("reject_reason")
+  reviewedBy Int? @map("reviewed_by")
+  reviewedByUser User? @relation("payment_requests_reviewed_by", fields: [reviewedBy], references: [id])
+  reviewedAt DateTime? @map("reviewed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  bankTransactionsByPaymentRequestId BankTransaction[] @relation("bank_transactions_payment_request_id")
+  paymentsByPaymentRequestId Payment? @relation("payments_payment_request_id")
+  @@map("payment_requests")
+}
+
+model BankTransaction {
+  id Int @id @default(autoincrement())
+  houseId Int @map("house_id")
+  house BoardingHouse @relation("bank_transactions_house_id", fields: [houseId], references: [id])
+  providerTxnId String @db.VarChar(64) @map("provider_txn_id")
+  accountNo String @db.VarChar(30) @map("account_no")
+  amount Int
+  content String @db.VarChar(255)
+  transactionDate DateTime @map("transaction_date")
+  rawPayload Json @map("raw_payload")
+  result BankTransactionResult
+  reason String? @db.VarChar(255)
+  paymentRequestId Int? @map("payment_request_id")
+  paymentRequest PaymentRequest? @relation("bank_transactions_payment_request_id", fields: [paymentRequestId], references: [id])
+  handledBy Int? @map("handled_by")
+  handledByUser User? @relation("bank_transactions_handled_by", fields: [handledBy], references: [id])
+  handledAt DateTime? @map("handled_at")
+  receivedAt DateTime @map("received_at")
+  paymentsByBankTransactionId Payment? @relation("payments_bank_transaction_id")
+  @@unique([houseId, providerTxnId])
+  @@map("bank_transactions")
+}
+
+model Payment {
+  id Int @id @default(autoincrement())
+  houseId Int @map("house_id")
+  house BoardingHouse @relation("payments_house_id", fields: [houseId], references: [id])
+  invoiceId Int @map("invoice_id")
+  invoice Invoice @relation("payments_invoice_id", fields: [invoiceId], references: [id])
+  payerMemberId Int? @map("payer_member_id")
+  payerMember ContractMember? @relation("payments_payer_member_id", fields: [payerMemberId], references: [id])
+  method PaymentMethod
+  source PaymentSource
+  amount Int
+  paymentRequestId Int? @unique @map("payment_request_id")
+  paymentRequest PaymentRequest? @relation("payments_payment_request_id", fields: [paymentRequestId], references: [id])
+  bankTransactionId Int? @unique @map("bank_transaction_id")
+  bankTransaction BankTransaction? @relation("payments_bank_transaction_id", fields: [bankTransactionId], references: [id])
+  note String? @db.VarChar(255)
+  confirmedBy Int? @map("confirmed_by")
+  confirmedByUser User? @relation("payments_confirmed_by", fields: [confirmedBy], references: [id])
+  confirmedAt DateTime @map("confirmed_at")
+  paymentAllocationsByPaymentId PaymentAllocation[] @relation("payment_allocations_payment_id")
+  @@map("payments")
+}
+
+model PaymentAllocation {
+  id Int @id @default(autoincrement())
+  paymentId Int @map("payment_id")
+  payment Payment @relation("payment_allocations_payment_id", fields: [paymentId], references: [id])
+  obligationId Int @map("obligation_id")
+  obligation InvoiceObligation @relation("payment_allocations_obligation_id", fields: [obligationId], references: [id])
+  amount Int
+  @@map("payment_allocations")
+}
+
+model Incident {
+  id Int @id @default(autoincrement())
+  houseId Int @map("house_id")
+  house BoardingHouse @relation("incidents_house_id", fields: [houseId], references: [id])
+  roomId Int @map("room_id")
+  room Room @relation("incidents_room_id", fields: [roomId], references: [id])
+  contractId Int? @map("contract_id")
+  contract Contract? @relation("incidents_contract_id", fields: [contractId], references: [id])
+  reportedBy Int @map("reported_by")
+  reportedByUser User @relation("incidents_reported_by", fields: [reportedBy], references: [id])
+  description String @db.Text
+  severity IncidentSeverity
+  status IncidentStatus
+  cause String? @db.Text
+  result String? @db.Text
+  costAmount Int? @map("cost_amount")
+  costBearer IncidentCostBearer? @map("cost_bearer")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  closedAt DateTime? @map("closed_at")
+  incidentUpdatesByIncidentId IncidentUpdate[] @relation("incident_updates_incident_id")
+  extraChargesByIncidentId ExtraCharge[] @relation("extra_charges_incident_id")
+  @@map("incidents")
+}
+
+model IncidentUpdate {
+  id Int @id @default(autoincrement())
+  incidentId Int @map("incident_id")
+  incident Incident @relation("incident_updates_incident_id", fields: [incidentId], references: [id])
+  authorId Int @map("author_id")
+  author User @relation("incident_updates_author_id", fields: [authorId], references: [id])
+  content String @db.Text
+  statusAfter IncidentUpdateStatusAfter @map("status_after")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("incident_updates")
+}
+
+model ExtraCharge {
+  id Int @id @default(autoincrement())
+  contractId Int @map("contract_id")
+  contract Contract @relation("extra_charges_contract_id", fields: [contractId], references: [id])
+  incidentId Int? @map("incident_id")
+  incident Incident? @relation("extra_charges_incident_id", fields: [incidentId], references: [id])
+  description String @db.VarChar(255)
+  amount Int
+  invoiceId Int? @map("invoice_id")
+  invoice Invoice? @relation("extra_charges_invoice_id", fields: [invoiceId], references: [id])
+  createdBy Int @map("created_by")
+  createdByUser User @relation("extra_charges_created_by", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("extra_charges")
+}
+
+model FinanceEntry {
+  id Int @id @default(autoincrement())
+  houseId Int @map("house_id")
+  house BoardingHouse @relation("finance_entries_house_id", fields: [houseId], references: [id])
+  type FinanceEntryType
+  source FinanceEntrySource
+  sourceId Int? @map("source_id")
+  description String @db.VarChar(255)
+  amount Int
+  occurredOn DateTime @db.Date @map("occurred_on")
+  createdBy Int? @map("created_by")
+  createdByUser User? @relation("finance_entries_created_by", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("finance_entries")
+}
+
+model Settlement {
+  id Int @id @default(autoincrement())
+  contractId Int @unique @map("contract_id")
+  contract Contract @relation("settlements_contract_id", fields: [contractId], references: [id])
+  depositHeld Int @map("deposit_held")
+  outstandingDebt Int @map("outstanding_debt")
+  depositUsedForDebt Int @default(0) @map("deposit_used_for_debt")
+  resultAmount Int @map("result_amount")
+  status SettlementStatus
+  completedBy Int? @map("completed_by")
+  completedByUser User? @relation("settlements_completed_by", fields: [completedBy], references: [id])
+  completedAt DateTime? @map("completed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  settlementItemsBySettlementId SettlementItem[] @relation("settlement_items_settlement_id")
+  @@map("settlements")
+}
+
+model SettlementItem {
+  id Int @id @default(autoincrement())
+  settlementId Int @map("settlement_id")
+  settlement Settlement @relation("settlement_items_settlement_id", fields: [settlementId], references: [id])
+  kind SettlementItemKind
+  adjustmentId Int? @map("adjustment_id")
+  adjustment InvoiceAdjustment? @relation("settlement_items_adjustment_id", fields: [adjustmentId], references: [id])
+  isRevenue Boolean @default(false) @map("is_revenue")
+  description String @db.VarChar(255)
+  amount Int
+  reason String? @db.VarChar(255)
+  @@map("settlement_items")
+}
+
+model Announcement {
+  id Int @id @default(autoincrement())
+  houseId Int @map("house_id")
+  house BoardingHouse @relation("announcements_house_id", fields: [houseId], references: [id])
+  title String @db.VarChar(150)
+  content String @db.Text
+  target AnnouncementTarget
+  roomIds Json? @map("room_ids")
+  createdBy Int @map("created_by")
+  createdByUser User @relation("announcements_created_by", fields: [createdBy], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("announcements")
+}
+
+model Notification {
+  id Int @id @default(autoincrement())
+  userId Int @map("user_id")
+  user User @relation("notifications_user_id", fields: [userId], references: [id])
+  houseId Int? @map("house_id")
+  house BoardingHouse? @relation("notifications_house_id", fields: [houseId], references: [id])
+  type String @db.VarChar(50)
+  title String @db.VarChar(150)
+  body String @db.Text
+  refType String? @db.VarChar(30) @map("ref_type")
+  refId Int? @map("ref_id")
+  readAt DateTime? @map("read_at")
+  pushStatus NotificationPushStatus @default(PENDING) @map("push_status")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("notifications")
+}
+
+model Attachment {
+  id Int @id @default(autoincrement())
+  houseId Int @map("house_id")
+  house BoardingHouse @relation("attachments_house_id", fields: [houseId], references: [id])
+  ownerType AttachmentOwnerType @map("owner_type")
+  ownerId Int @map("owner_id")
+  filePath String @db.VarChar(255) @map("file_path")
+  uploadedBy Int @map("uploaded_by")
+  uploadedByUser User @relation("attachments_uploaded_by", fields: [uploadedBy], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("attachments")
+}
+
+model AuditLog {
+  id Int @id @default(autoincrement())
+  houseId Int? @map("house_id")
+  house BoardingHouse? @relation("audit_logs_house_id", fields: [houseId], references: [id])
+  actorId Int? @map("actor_id")
+  actor User? @relation("audit_logs_actor_id", fields: [actorId], references: [id])
+  entityType String @db.VarChar(50) @map("entity_type")
+  entityId Int @map("entity_id")
+  action String @db.VarChar(50)
+  beforeData Json? @map("before_data")
+  afterData Json? @map("after_data")
+  reason String? @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("audit_logs")
+}
+
+enum RecoveryContactType {
+  EMAIL
+  PHONE
+}
+
+enum OtpCodePurpose {
+  REGISTER
+  VERIFY_PHONE
+  RESET_PASSWORD
+  VERIFY_RECOVERY
+}
+
+enum SessionActiveRole {
+  LANDLORD
+  TENANT
+}
+
+enum RoomStatus {
+  VACANT
+  RESERVED
+  OCCUPIED
+  SUSPENDED
+}
+
+enum ServiceFeeType {
+  ELECTRIC
+  WATER
+  OTHER
+}
+
+enum ServiceCalcMethod {
+  METER
+  PER_PERSON
+  PER_ROOM
+  PER_QUANTITY
+  FIXED
+}
+
+enum ReservationDepositMethod {
+  CASH
+  TRANSFER
+}
+
+enum ReservationStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  CONVERTED
+}
+
+enum ContractSource {
+  FROM_RESERVATION
+  IMPORTED
+}
+
+enum ContractPaymentMode {
+  REPRESENTATIVE
+  SPLIT
+}
+
+enum ContractStatus {
+  ACTIVE
+  PENDING_LIQUIDATION
+  LIQUIDATED
+}
+
+enum ContractChangeKind {
+  EXTEND
+  ADJUST
+}
+
+enum ContractChangeStatus {
+  PROPOSED
+  AWAITING_CONFIRM
+  CONFIRMED
+  REJECTED
+  CLOSED
+}
+
+enum HandoverType {
+  MOVE_IN
+  MOVE_OUT
+}
+
+enum HandoverStatus {
+  PENDING_CONFIRM
+  DISPUTED
+  CONFIRMED
+  COMPLETED_UNCONFIRMED
+}
+
+enum MeterType {
+  ELECTRIC
+  WATER
+}
+
+enum ReadingFeedbackStatus {
+  OPEN
+  CLOSED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+}
+
+enum InvoiceLineLineType {
+  RENT
+  ELECTRIC
+  WATER
+  SERVICE
+  EXTRA
+  RESERVATION_OFFSET
+  OPENING_DEBT
+  ADJUSTMENT
+}
+
+enum InvoiceObligationStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+enum InvoiceAdjustmentDirection {
+  INCREASE
+  DECREASE
+}
+
+enum InvoiceAdjustmentHandling {
+  NEXT_PERIOD
+  REFUND
+  SETTLEMENT
+}
+
+enum InvoiceAdjustmentStatus {
+  PENDING
+  APPLIED
+  REFUNDED
+  SETTLED
+}
+
+enum PaymentRequestStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentRequestReportStatus {
+  NONE
+  REPORTED
+  CONFIRMED
+  REJECTED
+}
+
+enum BankTransactionResult {
+  AUTO_CONFIRMED
+  NEED_RECONCILE
+  RECONCILED
+  UNRELATED
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  DEPOSIT_OFFSET
+}
+
+enum PaymentSource {
+  CASH
+  TRANSFER_REPORT
+  AUTO_BANK
+  RECONCILE
+  SETTLEMENT
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum IncidentStatus {
+  NEW
+  IN_PROGRESS
+  AWAITING_CONFIRM
+  DONE
+}
+
+enum IncidentCostBearer {
+  LANDLORD
+  TENANT
+}
+
+enum IncidentUpdateStatusAfter {
+  NEW
+  IN_PROGRESS
+  AWAITING_CONFIRM
+  DONE
+}
+
+enum FinanceEntryType {
+  INCOME
+  EXPENSE
+}
+
+enum FinanceEntrySource {
+  MANUAL
+  INCIDENT
+  RESERVATION
+  SETTLEMENT
+}
+
+enum SettlementStatus {
+  DRAFT
+  SENT
+  COMPLETED
+}
+
+enum SettlementItemKind {
+  RENT_DUE
+  PREPAID_REFUND
+  DEDUCTION
+  OTHER_CHARGE
+  ADJUSTMENT
+}
+
+enum AnnouncementTarget {
+  ALL
+  ROOMS
+}
+
+enum NotificationPushStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum AttachmentOwnerType {
+  METER_READING
+  METER
+  HANDOVER
+  CONTRACT
+  CONTRACT_CHANGE
+  INCIDENT
+  PAYMENT_REQUEST
+  FINANCE_ENTRY
+}
